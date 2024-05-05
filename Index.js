@@ -99,7 +99,7 @@ app.get('/api/users/:_id/logs', async (req, res) => {
       return {
         description: item.description,
         duration: item.duration,
-        date: new Date(item.date).toISOString().split('T')[0],
+        date: new Date(item.date).toDateString(),
       };
     });
     res.json(responseObject);
