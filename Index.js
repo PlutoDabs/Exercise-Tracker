@@ -75,7 +75,22 @@ app.post('/api/users/:_id/exercises', async (req, res) => {
 app.get('/api/users/:_id/logs', async (req, res) => {
   try {
     let result = await User.findById(req.params._id);
-    let exerciseResult = await Exercise.find({ userId: req.params._id });
+    let query = Exercise.find({ userId: req.params._id });
+
+    if (req.query.from) {
+      query = query.where('date').gte(new Date(req.query.from));
+    }
+
+    if (req.query.to) {
+      query = query.where('date').lte(new Date(req.query.to));
+    }
+
+    if (req.query.limit) {
+      query = query.limit(Number(req.query.limit));
+    }
+
+    let exerciseResult = await query.exec();
+
     let responseObject = {};
     responseObject['_id'] = req.params._id;
     responseObject['username'] = result.username;
@@ -84,7 +99,7 @@ app.get('/api/users/:_id/logs', async (req, res) => {
       return {
         description: item.description,
         duration: item.duration,
-        date: item.date.toDateString(),
+        date: new Date(item.date).toDateString(),
       };
     });
     res.json(responseObject);
