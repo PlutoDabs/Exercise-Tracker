@@ -23,7 +23,7 @@ const exerciseSchema = new Schema({
   userId: { type: String, required: true },
   description: { type: String, required: true },
   duration: { type: Number, required: true },
-  date: String,
+  date: { type: Date, default: Date.now },
 });
 
 let User = mongoose.model('User', userSchema);
@@ -33,10 +33,7 @@ app.post('/api/users', async (req, res) => {
   let newUser = new User({ username: req.body.username });
   try {
     let savedUser = await newUser.save();
-    let responseObject = {};
-    responseObject['username'] = savedUser.username;
-    responseObject['_id'] = savedUser.id;
-    res.json(responseObject);
+    res.json(savedUser);
   } catch (err) {
     res.status(500).send(err);
   }
@@ -54,18 +51,19 @@ app.get('/api/users', async (req, res) => {
 app.post('/api/users/:_id/exercises', async (req, res) => {
   let newExercise = new Exercise(req.body);
   newExercise.userId = req.params._id;
-  if (newExercise.date === '') {
+  if (!req.body.date) {
     newExercise.date = new Date().toISOString().substring(0, 10);
   }
   try {
     let savedExercise = await newExercise.save();
     let userData = await User.findById(newExercise.userId);
-    let responseObject = {};
-    responseObject['_id'] = newExercise.userId;
-    responseObject['username'] = userData.username;
-    responseObject['date'] = new Date(savedExercise.date).toISOString().split('T')[0];
-    responseObject['description'] = newExercise.description;
-    responseObject['duration'] = newExercise.duration;
+    let responseObject = {
+      _id: userData._id,
+      username: userData.username,
+      date: new Date(savedExercise.date).toDateString(),
+      description: savedExercise.description,
+      duration: savedExercise.duration,
+    };
     res.json(responseObject);
   } catch (err) {
     res.status(500).send(err);
@@ -91,17 +89,18 @@ app.get('/api/users/:_id/logs', async (req, res) => {
 
     let exerciseResult = await query.exec();
 
-    let responseObject = {};
-    responseObject['_id'] = req.params._id;
-    responseObject['username'] = result.username;
-    responseObject['count'] = exerciseResult.length;
-    responseObject['log'] = exerciseResult.map((item) => {
-      return {
-        description: item.description,
-        duration: item.duration,
-        date: new Date(item.date).toDateString(),
-      };
-    });
+    let responseObject = {
+      _id: result._id,
+      username: result.username,
+      count: exerciseResult.length,
+      log: exerciseResult.map((item) => {
+        return {
+          description: item.description,
+          duration: item.duration,
+          date: new Date(item.date).toDateString(),
+        };
+      }),
+    };
     res.json(responseObject);
   } catch (err) {
     res.status(500).send(err);
