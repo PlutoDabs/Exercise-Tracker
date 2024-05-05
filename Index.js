@@ -11,7 +11,7 @@ app.get('/', (req, res) => {
   res.sendFile(__dirname + '/views/index.html');
 });
 
-mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
+mongoose.connect(process.env.MONGO_URI);
 
 const Schema = mongoose.Schema;
 
@@ -29,70 +29,68 @@ const exerciseSchema = new Schema({
 let User = mongoose.model('User', userSchema);
 let Exercise = mongoose.model('Exercise', exerciseSchema);
 
-app.post('/api/users', (req, res) => {
+app.post('/api/users', async (req, res) => {
   let newUser = new User({ username: req.body.username });
-  newUser.save((err, savedUser) => {
-    if (!err) {
-      let responseObject = {};
-      responseObject['username'] = savedUser.username;
-      responseObject['_id'] = savedUser.id;
-      res.json(responseObject);
-    }
-  });
+  try {
+    let savedUser = await newUser.save();
+    let responseObject = {};
+    responseObject['username'] = savedUser.username;
+    responseObject['_id'] = savedUser.id;
+    res.json(responseObject);
+  } catch (err) {
+    res.status(500).send(err);
+  }
 });
 
-app.get('/api/users', (req, res) => {
-  User.find({}, (error, arrayOfUsers) => {
-    if (!error) {
-      res.json(arrayOfUsers);
-    }
-  });
+app.get('/api/users', async (req, res) => {
+  try {
+    let arrayOfUsers = await User.find({});
+    res.json(arrayOfUsers);
+  } catch (err) {
+    res.status(500).send(err);
+  }
 });
 
-app.post('/api/users/:_id/exercises', (req, res) => {
+app.post('/api/users/:_id/exercises', async (req, res) => {
   let newExercise = new Exercise(req.body);
   newExercise.userId = req.params._id;
   if (newExercise.date === '') {
     newExercise.date = new Date().toISOString().substring(0, 10);
   }
-  newExercise.save((error, savedExercise) => {
-    if (!error) {
-      User.findById(newExercise.userId, (error, userData) => {
-        if (!error) {
-          let responseObject = {};
-          responseObject['_id'] = newExercise.userId;
-          responseObject['username'] = userData.username;
-          responseObject['date'] = new Date(newExercise.date).toDateString();
-          responseObject['description'] = newExercise.description;
-          responseObject['duration'] = newExercise.duration;
-          res.json(responseObject);
-        }
-      });
-    }
-  });
+  try {
+    let savedExercise = await newExercise.save();
+    let userData = await User.findById(newExercise.userId);
+    let responseObject = {};
+    responseObject['_id'] = newExercise.userId;
+    responseObject['username'] = userData.username;
+    responseObject['date'] = new Date(newExercise.date).toDateString();
+    responseObject['description'] = newExercise.description;
+    responseObject['duration'] = newExercise.duration;
+    res.json(responseObject);
+  } catch (err) {
+    res.status(500).send(err);
+  }
 });
 
-app.get('/api/users/:_id/logs', (req, res) => {
-  User.findById(req.params._id, (error, result) => {
-    if (!error) {
-      Exercise.find({ userId: req.params._id }, (error, result) => {
-        if (!error) {
-          let responseObject = {};
-          responseObject['_id'] = req.params._id;
-          responseObject['username'] = result.username;
-          responseObject['count'] = result.length;
-          responseObject['log'] = result.map((item) => {
-            return {
-              description: item.description,
-              duration: item.duration,
-              date: item.date.toDateString(),
-            };
-          });
-          res.json(responseObject);
-        }
-      });
-    }
-  });
+app.get('/api/users/:_id/logs', async (req, res) => {
+  try {
+    let result = await User.findById(req.params._id);
+    let exerciseResult = await Exercise.find({ userId: req.params._id });
+    let responseObject = {};
+    responseObject['_id'] = req.params._id;
+    responseObject['username'] = result.username;
+    responseObject['count'] = exerciseResult.length;
+    responseObject['log'] = exerciseResult.map((item) => {
+      return {
+        description: item.description,
+        duration: item.duration,
+        date: item.date.toDateString(),
+      };
+    });
+    res.json(responseObject);
+  } catch (err) {
+    res.status(500).send(err);
+  }
 });
 
 const listener = app.listen(process.env.PORT || 3000, () => {
