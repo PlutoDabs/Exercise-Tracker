@@ -63,7 +63,7 @@ app.post('/api/users/:_id/exercises', async (req, res) => {
     let responseObject = {};
     responseObject['_id'] = newExercise.userId;
     responseObject['username'] = userData.username;
-    responseObject['date'] = new Date(newExercise.date).toDateString();
+    responseObject['date'] = new Date(savedExercise.date).toISOString().split('T')[0];
     responseObject['description'] = newExercise.description;
     responseObject['duration'] = newExercise.duration;
     res.json(responseObject);
@@ -99,7 +99,7 @@ app.get('/api/users/:_id/logs', async (req, res) => {
       return {
         description: item.description,
         duration: item.duration,
-        date: new Date(item.date).toDateString(),
+        date: new Date(item.date).toISOString().split('T')[0],
       };
     });
     res.json(responseObject);
