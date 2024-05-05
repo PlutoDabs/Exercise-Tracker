@@ -34,6 +34,10 @@ app.get('/', (req, res) => {
 });
 
 app.post('/api/users', async (req, res) => {
+  if (!req.body.username) {
+    return res.status(400).json({ error: 'Username is required' });
+  }
+
   const user = new User({ username: req.body.username });
   await user.save();
   res.json({ username: user.username, _id: user._id });
