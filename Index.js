@@ -50,15 +50,56 @@ app.get('/api/users', async (req, res) => {
 
 app.post('/api/users/:_id/exercises', async (req, res) => {
   const user = await User.findById(req.params._id);
-  const exercise = new Exercise({ user: user._id, description: req.body.description, duration: req.body.duration, date: req.body.date });
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  const exercise = new Exercise({
+    user: user._id,
+    description: req.body.description,
+    duration: req.body.duration,
+    date: req.body.date ? new Date(req.body.date) : new Date(),
+  });
+
   await exercise.save();
-  res.json({ username: user.username, _id: user._id, description: exercise.description, duration: exercise.duration, date: exercise.date.toDateString() });
+
+  res.json({
+    _id: user._id,
+    username: user.username,
+    date: exercise.date.toDateString(),
+    duration: exercise.duration,
+    description: exercise.description,
+  });
 });
 
 app.get('/api/users/:_id/logs', async (req, res) => {
   const user = await User.findById(req.params._id);
-  const exercises = await Exercise.find({ user: user._id }).limit(req.query.limit).sort({ date: -1 });
-  res.json({ username: user.username, _id: user._id, count: exercises.length, log: exercises.map(e => ({ description: e.description, duration: e.duration, date: e.date.toDateString() })) });
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  let query = Exercise.find({ user: user._id });
+
+  if (req.query.from) {
+    query = query.where('date').gte(new Date(req.query.from));
+  }
+
+  if (req.query.to) {
+    query = query.where('date').lte(new Date(req.query.to));
+  }
+
+  if (req.query.limit) {
+    query = query.limit(Number(req.query.limit));
+  }
+
+  const exercises = await query.exec();
+
+  res.json({
+    _id: user._id,
+    username: user.username,
+    count: exercises.length,
+    log: exercises.map(e => ({
+      description: e.description,
+      duration: e.duration,
+      date: e.date.toDateString(),
+    })),
+  });
 });
 
 const listener = app.listen(process.env.PORT || 3000, () => {
